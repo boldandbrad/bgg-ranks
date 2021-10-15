@@ -1,7 +1,8 @@
 
 from datetime import date
 import json
-import os
+from os import makedirs, walk
+from os.path import exists, join, splitext
 import sys
 
 import requests
@@ -13,37 +14,47 @@ api2_base_url = 'https://boardgamegeek.com/xmlapi2'
 in_path = './in'
 out_path = './out'
 
-# TODO: call on every file in in_path instead of hardcoded values
-data_sources = [
-    'cabinet',
-    'watchlist'
-]
+def get_sources() -> list[str]:
+    # create in_path dir and exit if it does not exist
+    if not exists(in_path):
+        makedirs(in_path)
+        sys.exit(f'Created src directory {in_path}. Add \'.yaml\' files to it and rerun')
+
+    # retrieve data source files from in_path
+    sources = next(walk(in_path))[2]
+    for src in sources:
+        ext = splitext(src)[1]
+        if ext != '.yaml':
+            print(f'Error: could not process \'{src}\' because it is not a .yaml file')
+            sources.remove(src)
+
+    if not sources:
+        sys.exit(f'Error: no valid source files exist in the \'in\' directory')
+    return sources
 
 def read_source(src: str) -> 'list[int]':
-    filename = f'{src}.yaml'
-
-    # create in dir if it does not exist
-    if not os.path.exists(in_path):
-        os.makedirs(in_path)
-        sys.exit(f'Error: no source files exist in the \'in\' directory')
-
-    with open(os.path.join(in_path, filename), 'r') as f:
+    with open(join(in_path, src), 'r') as f:
         data = yaml.load(f, Loader=yaml.FullLoader)
-        if 'board-games' in data:
-            return data['board-games']
+        if data and 'bgg-ids' in data:
+            ids = data['bgg-ids']
+
+            # remove non int values from list
+            for id in ids:
+                if not isinstance(id, int):
+                    ids.remove(id)
+            return ids
         else:
-            sys.exit(f'Error: {filename} does not contain id list \'board-games\'')
+            return None
 
 def write_results(src: str, results: dict) -> None:
-    today = date.today()
     path = f'{out_path}/{src}'
-    filename = f'{src}-{today}.json'
+    filename = f'{src}-{date.today()}.json'
 
     # create out dirs if they do not exist
-    if not os.path.exists(path):
-        os.makedirs(path)
+    if not exists(path):
+        makedirs(path)
 
-    with open(os.path.join(path, filename), 'w') as f:
+    with open(join(path, filename), 'w') as f:
         json.dump(results, f, indent=4, ensure_ascii=False)
 
     print(f'{src} results successfully written to {path}/{filename}')
@@ -56,16 +67,17 @@ def get_items(ids: 'list[int]') -> dict:
         resp_dict = xmltodict.parse(response.content)
         return resp_dict
     else:
+        # TODO: provide better error handling and logging for bad requests
         sys.exit(f'Error: HTTP {response.status_code}: {response.content}')
 
-def get_item_name(item_dict: dict) -> str:
+def parse_item_name(item_dict: dict) -> str:
     name_dict = item_dict['name']
     if isinstance(name_dict, list):
         return name_dict[0]['@value']
     else:
         return name_dict['@value']
 
-def get_item_rank(item_dict: dict) -> int:
+def parse_item_rank(item_dict: dict) -> int:
     rank_dict = item_dict['statistics']['ratings']['ranks']['rank']
     if isinstance(rank_dict, list):
         return int(rank_dict[0]['@value'])
@@ -73,23 +85,28 @@ def get_item_rank(item_dict: dict) -> int:
         return int(rank_dict['@value'])
 
 def parse_item(item_dict) -> dict:
-    name = get_item_name(item_dict)
-    rank = get_item_rank(item_dict)
+    name = parse_item_name(item_dict)
+    rank = parse_item_rank(item_dict)
     weight = round(float(item_dict['statistics']['ratings']['averageweight']['@value']), 2)
     id = int(item_dict['@id'])
     return {'name': name, 'rank': rank, 'weight': weight, 'id': id}
 
 
 if __name__ == '__main__':
-    for src in data_sources:
+    # process each data source file
+    sources = get_sources()
+    for src in sources:
         # read board game ids from src file
         board_game_ids = read_source(src)
+        if not board_game_ids:
+            print(f'Error: could not process \'{src}\' because it does not contain non-empty id list \'bgg-ids\' at root')
+            continue
 
         # get items from BGG
         resp_dict = get_items(board_game_ids)
         items = resp_dict['items']['item']
 
-        # parse results for item ranks
+        # parse results for item ranks based on structure
         results = []
         if isinstance(items, list):
             for item in items:
@@ -102,4 +119,5 @@ if __name__ == '__main__':
         results.sort(key=lambda x: x['rank'])
 
         # write results dict to json file
-        write_results(src, results)
+        src_name = splitext(src)[0]
+        write_results(src_name, results)

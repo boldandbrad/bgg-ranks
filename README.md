@@ -9,38 +9,30 @@ Simple script that grabs Board Game data from BoardGameGeek.com via the [BGG XML
 
 ## Usage
 
-1. Create one or more `.yaml` files at `./in/` with the following format:
+1. Create one or more `.yaml` source files inside `./in/` with the following format:
 
     ```yaml
     # collection.yaml
-    board-games:
-    - 266192    # BGG ids
+    bgg-ids:
+    - 266192    # BGG id ints
     - 266524
     ```
 
     > BGG ids can be easily stripped from the board game page urls on [boardgamegeek.com](https://boardgamegeek.com)
 
-2. Update the `data_sources` list in `bgg_ranks.py` to include the created yaml file, without extension:
-
-    ```py
-    data_sources = [
-        'collection',
-    ]
-    ```
-
-3. Run the `bgg_ranks.py` script:
+2. Run the `bgg_ranks.py` script:
 
     ```zsh
     python bgg_ranks.py
     ```
 
-4. Script will create an out files for each source in `data_sources`, with the following format:
+3. The script will create an output file for each source `.yaml` file in `./in/`, with the following path and name:
 
     ```txt
     ./out/collection/collection-yyyy-mm-dd.json
     ```
 
-    Each out file contains a simple json list containing an object for each game id provided in the corresponding source file. The list will always be sorted by `rank` in ascending order.
+    Each out file contains a simple json list of board game objects corresponding to the ids provided in the source file. The list will always be sorted by BGG `rank` in ascending order.
 
     ```json
     [
