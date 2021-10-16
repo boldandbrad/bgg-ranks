@@ -16,9 +16,11 @@ Simple script that grabs Board Game data from BoardGameGeek.com via the [BGG XML
     bgg-ids:
     - 266192    # BGG id ints
     - 266524
+    - 290448
+
     ```
 
-    > BGG ids can be easily stripped from the board game page urls on [boardgamegeek.com](https://boardgamegeek.com)
+    > BGG ids can be easily stripped from the board game or board game expansion page urls on [boardgamegeek.com](https://boardgamegeek.com)
 
 2. Run the `bgg_ranks.py` script:
 
@@ -29,32 +31,48 @@ Simple script that grabs Board Game data from BoardGameGeek.com via the [BGG XML
 3. The script will create an output file for each source `.yaml` file in `./in/`, with the following path and name:
 
     ```txt
-    ./out/collection/collection-yyyy-mm-dd.json
+    ./out/collection/yyyy-mm-dd.json
     ```
 
-    Each out file contains a simple json list of board game objects corresponding to the ids provided in the source file. The list will always be sorted by BGG `rank` in ascending order.
+    Each out file contains lists of board game and expansion objects corresponding to the ids provided in the source file. The boardgames list will always be sorted by BGG `rank` in ascending order, while the expansions list will always be sorted by BGG `rating` in descending order.
 
     ```json
-    [
-        {
-            "name": "Wingspan",
-            "rank": 21,
-            "weight": 2.43,
-            "id": 266192
-        },
-        {
-            "name": "PARKS",
-            "rank": 113,
-            "weight": 2.16,
-            "id": 266524
-        }
-    ]
+    {
+        "boardgames": [
+            {
+                "name": "Wingspan",
+                "year": "2019",
+                "rating": 8.11,
+                "rank": "21",
+                "weight": 2.43,
+                "id": 266192
+            },
+            {
+                "name": "PARKS",
+                "year": "2019",
+                "rating": 7.84,
+                "rank": "113",
+                "weight": 2.16,
+                "id": 266524
+            }
+        ],
+        "expansions": [
+            {
+                "name": "Wingspan: European Expansion",
+                "year": "2019",
+                "rating": 8.42,
+                "rank": "Not Ranked",
+                "weight": 2.38,
+                "id": 290448
+            }
+        ]
+    }
     ```
 
 ## Coming Soon
 
-- Added support for Board Game Expansions
 - Additional script for aggregating output files into metrics
+- Multi-thread requests to api for extremely long id lists?
 
 ## License
 

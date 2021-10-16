@@ -4,6 +4,7 @@ import json
 from os import makedirs, walk
 from os.path import exists, join, splitext
 import sys
+from typing import Any
 
 import requests
 import xmltodict
@@ -37,6 +38,8 @@ def read_source(src: str) -> 'list[int]':
         data = yaml.load(f, Loader=yaml.FullLoader)
         if data and 'bgg-ids' in data:
             ids = data['bgg-ids']
+            if not ids:
+                return None
 
             # remove non int values from list
             for id in ids:
@@ -48,7 +51,7 @@ def read_source(src: str) -> 'list[int]':
 
 def write_results(src: str, results: dict) -> None:
     path = f'{out_path}/{src}'
-    filename = f'{src}-{date.today()}.json'
+    filename = f'{date.today()}.json'
 
     # create out dirs if they do not exist
     if not exists(path):
@@ -61,7 +64,7 @@ def write_results(src: str, results: dict) -> None:
 
 def get_items(ids: 'list[int]') -> dict:
     ids_str = ','.join(map(str, ids))
-    url = f'{api2_base_url}/thing?id={ids_str}&type=boardgame&stats=1'
+    url = f'{api2_base_url}/thing?id={ids_str}&type=boardgame,boardgameexpansion&stats=1'
     response = requests.get(url)
     if response.status_code == 200:
         resp_dict = xmltodict.parse(response.content)
@@ -77,19 +80,34 @@ def parse_item_name(item_dict: dict) -> str:
     else:
         return name_dict['@value']
 
-def parse_item_rank(item_dict: dict) -> int:
+def parse_item_type(item_dict: dict) -> str:
+    type = item_dict['@type']
+    if type == 'boardgameexpansion':
+        type = 'expansion'
+    return type
+
+def parse_item_rank(item_dict: dict) -> Any:
     rank_dict = item_dict['statistics']['ratings']['ranks']['rank']
     if isinstance(rank_dict, list):
-        return int(rank_dict[0]['@value'])
+        return rank_dict[0]['@value']
     else:
-        return int(rank_dict['@value'])
+        return rank_dict['@value']
 
-def parse_item(item_dict) -> dict:
-    name = parse_item_name(item_dict)
-    rank = parse_item_rank(item_dict)
-    weight = round(float(item_dict['statistics']['ratings']['averageweight']['@value']), 2)
-    id = int(item_dict['@id'])
-    return {'name': name, 'rank': rank, 'weight': weight, 'id': id}
+def parse_item(item_dict: dict, results: dict) -> None:
+    item = {
+        'name': parse_item_name(item_dict),
+        'year': item_dict['yearpublished']['@value'],
+        'rating': round(float(item_dict['statistics']['ratings']['average']['@value']), 2),
+        'rank': parse_item_rank(item_dict),
+        'weight': round(float(item_dict['statistics']['ratings']['averageweight']['@value']), 2),
+        'id': int(item_dict['@id']),
+    }
+    type = parse_item_type(item_dict)
+
+    if type == 'boardgame':
+        results['boardgames'].append(item)
+    elif type == 'expansion':
+        results['expansions'].append(item)
 
 
 if __name__ == '__main__':
@@ -99,7 +117,7 @@ if __name__ == '__main__':
         # read board game ids from src file
         board_game_ids = read_source(src)
         if not board_game_ids:
-            print(f'Error: could not process \'{src}\' because it does not contain non-empty id list \'bgg-ids\' at root')
+            print(f'\tError: could not process \'{src}\' because it does not contain non-empty id list \'bgg-ids\' at root')
             continue
 
         # get items from BGG
@@ -107,16 +125,23 @@ if __name__ == '__main__':
         items = resp_dict['items']['item']
 
         # parse results for item ranks based on structure
-        results = []
+        results = {
+            'boardgames': [],
+            'expansions': [],
+        }
         if isinstance(items, list):
             for item in items:
-                results.append(parse_item(item))
+                parse_item(item, results)
         else:
             item = items
-            results.append(parse_item(item))
+            parse_item(item, results)
 
-        # sort results by rank
-        results.sort(key=lambda x: x['rank'])
+        # sort boardgames by rank and expansions by rating
+        if results['boardgames']:
+            results['boardgames'].sort(key=lambda x: int(x['rank']))
+
+        if results['expansions']:
+            results['expansions'].sort(key=lambda x: int(x['rating']))
 
         # write results dict to json file
         src_name = splitext(src)[0]
