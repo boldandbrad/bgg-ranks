@@ -73,6 +73,7 @@ Simple script that grabs Board Game data from BoardGameGeek.com via the [BGG XML
 
 - Additional script for aggregating output files into metrics
 - Multi-thread requests to api for extremely long id lists?
+- Optional csv output for copy/import into spreadsheets
 
 ## License
 

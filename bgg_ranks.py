@@ -141,7 +141,7 @@ if __name__ == '__main__':
             results['boardgames'].sort(key=lambda x: int(x['rank']))
 
         if results['expansions']:
-            results['expansions'].sort(key=lambda x: int(x['rating']))
+            results['expansions'].sort(key=lambda x: x['rating'], reverse=True)
 
         # write results dict to json file
         src_name = splitext(src)[0]
