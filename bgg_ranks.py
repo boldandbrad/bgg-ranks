@@ -100,6 +100,8 @@ def parse_item(item_dict: dict, results: dict) -> None:
         'rating': round(float(item_dict['statistics']['ratings']['average']['@value']), 2),
         'rank': parse_item_rank(item_dict),
         'weight': round(float(item_dict['statistics']['ratings']['averageweight']['@value']), 2),
+        'players': item_dict['minplayers']['@value'] + '-' + item_dict['maxplayers']['@value'],
+        'time': item_dict['minplaytime']['@value'] + '-' + item_dict['maxplaytime']['@value'],
         'id': int(item_dict['@id']),
     }
     type = parse_item_type(item_dict)

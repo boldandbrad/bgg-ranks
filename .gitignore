@@ -1,6 +1,9 @@
 in
 out
 
+testin
+testout
+
 .python-version
 .venv
 .vscode
