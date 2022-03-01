@@ -52,8 +52,9 @@ def read_source(src: str) -> "list[int]":
 
 
 def write_results(src: str, results: dict) -> None:
-    path = f"{out_path}/{src}"
-    filename = f"{date.today()}.json"
+    today = date.today()
+    path = f"{out_path}/{src}/{today.strftime('%Y-%m')}"
+    filename = f"{today}.json"
 
     # create out dirs if they do not exist
     if not exists(path):
@@ -129,6 +130,13 @@ def parse_item(item_dict: dict, results: dict) -> None:
         results["expansions"].append(item)
 
 
+def sortby_rank(x: dict) -> Any:
+    try:
+        return int(x["rank"])
+    except ValueError:
+        return float("inf")
+
+
 if __name__ == "__main__":
     # process each data source file
     sources = get_sources()
@@ -159,7 +167,7 @@ if __name__ == "__main__":
 
         # sort boardgames by rank and expansions by rating
         if results["boardgames"]:
-            results["boardgames"].sort(key=lambda x: int(x["rank"]))
+            results["boardgames"].sort(key=sortby_rank)
 
         if results["expansions"]:
             results["expansions"].sort(key=lambda x: x["rating"], reverse=True)
