@@ -28,13 +28,13 @@ Simple script that grabs Board Game data from BoardGameGeek.com via the [BGG XML
     python bgg_ranks.py
     ```
 
-3. The script will create an output file for each source `.yaml` file in `./in/`, with the following path and name:
+3. The script will create a `.json` output file for each source `.yaml` file in `./in/`, with the following path and name:
 
     ```txt
-    ./out/collection/yyyy-mm-dd.json
+    ./out/collection/yyyy-mm/yyyy-mm-dd.json
     ```
 
-    Each out file contains lists of board game and expansion objects corresponding to the ids provided in the source file. The boardgames list will always be sorted by BGG `rank` in ascending order, while the expansions list will always be sorted by BGG `rating` in descending order.
+    Each output file contains lists of board game and expansion objects corresponding to the ids provided in the relevant source file. The 'boardgames' list will always be sorted by BGG `rank` in ascending order, while the 'expansions' list will always be sorted by BGG `rating` in descending order.
 
     ```json
     {
@@ -74,6 +74,7 @@ Simple script that grabs Board Game data from BoardGameGeek.com via the [BGG XML
 - Additional script for aggregating output files into metrics
 - Multi-thread requests to api for extremely long id lists?
 - Optional csv output for copy/import into spreadsheets
+- Option/flag to sort 'boardgames' output by rating instead of rank
 
 ## License
 
