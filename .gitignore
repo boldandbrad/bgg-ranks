@@ -6,4 +6,5 @@ testout
 
 .python-version
 .venv
-.vscode
+.envrc
+.vscode*
