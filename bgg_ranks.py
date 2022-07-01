@@ -25,7 +25,7 @@ def get_sources() -> list[str]:
     sources = next(walk(in_path))[2]
     for src in sources:
         ext = splitext(src)[1]
-        if ext != ".yaml":
+        if ext != ".yaml" and ext != ".yml":
             print(f"Error: could not process '{src}' because it is not a .yaml file")
             sources.remove(src)
 
@@ -80,39 +80,48 @@ def get_items(ids: "list[int]") -> dict:
         sys.exit(f"Error: HTTP {response.status_code}: {response.content}")
 
 
-def parse_item_name(item_dict: dict) -> str:
-    name_dict = item_dict["name"]
+def parse_item_name(name_dict: dict) -> str:
     if isinstance(name_dict, list):
         return name_dict[0]["@value"]
     else:
         return name_dict["@value"]
 
 
-def parse_item_type(item_dict: dict) -> str:
-    type = item_dict["@type"]
-    if type == "boardgameexpansion":
-        type = "expansion"
-    return type
+def parse_item_type(item_type: dict) -> str:
+    if item_type == "boardgameexpansion":
+        item_type = "expansion"
+    return item_type
 
 
-def parse_item_rank(item_dict: dict) -> Any:
-    rank_dict = item_dict["statistics"]["ratings"]["ranks"]["rank"]
-    if isinstance(rank_dict, list):
-        return rank_dict[0]["@value"]
+def parse_item_rank(ranks_dict: dict) -> Any:
+    if isinstance(ranks_dict, list):
+        rank_dict = ranks_dict["rank"]
+        if isinstance(rank_dict, list):
+            return rank_dict[0]["@value"]
+        else:
+            return rank_dict["@value"]
     else:
-        return rank_dict["@value"]
+        return "0.00"
+
+
+def parse_item_float_val(key_dict: dict) -> Any:
+    value = key_dict["@value"]
+    if value != "":
+        return float(value)
+    else:
+        return 0.0
 
 
 def parse_item(item_dict: dict, results: dict) -> None:
     item = {
-        "name": parse_item_name(item_dict),
+        "name": parse_item_name(item_dict["name"]),
         "year": item_dict["yearpublished"]["@value"],
         "rating": round(
-            float(item_dict["statistics"]["ratings"]["average"]["@value"]), 2
+            parse_item_float_val(item_dict["statistics"]["ratings"]["average"]), 2
         ),
-        "rank": parse_item_rank(item_dict),
+        "rank": parse_item_rank(item_dict["statistics"]["ratings"]["ranks"]),
         "weight": round(
-            float(item_dict["statistics"]["ratings"]["averageweight"]["@value"]), 2
+            parse_item_float_val(item_dict["statistics"]["ratings"]["averageweight"]), 2
         ),
         "players": item_dict["minplayers"]["@value"]
         + "-"
@@ -122,7 +131,7 @@ def parse_item(item_dict: dict, results: dict) -> None:
         + item_dict["maxplaytime"]["@value"],
         "id": int(item_dict["@id"]),
     }
-    type = parse_item_type(item_dict)
+    type = parse_item_type(item_dict["@type"])
 
     if type == "boardgame":
         results["boardgames"].append(item)
