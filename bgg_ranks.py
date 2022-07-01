@@ -94,14 +94,14 @@ def parse_item_type(item_type: dict) -> str:
 
 
 def parse_item_rank(ranks_dict: dict) -> Any:
-    if isinstance(ranks_dict, list):
+    if isinstance(ranks_dict, dict):
         rank_dict = ranks_dict["rank"]
         if isinstance(rank_dict, list):
             return rank_dict[0]["@value"]
         else:
             return rank_dict["@value"]
     else:
-        return "0.00"
+        return "Not Ranked"
 
 
 def parse_item_float_val(key_dict: dict) -> Any:
