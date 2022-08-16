@@ -1,8 +1,8 @@
-from datetime import date
 import json
+import sys
+from datetime import date
 from os import makedirs, walk
 from os.path import exists, join, splitext
-import sys
 from typing import Any
 
 import requests
@@ -30,7 +30,7 @@ def get_sources() -> list[str]:
             sources.remove(src)
 
     if not sources:
-        sys.exit(f"Error: no valid source files exist in the 'in' directory")
+        sys.exit("Error: no valid source files exist in the 'in' directory")
     return sources
 
 
