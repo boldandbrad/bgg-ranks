@@ -1,6 +1,6 @@
 import sys
+import json
 from datetime import date
-from json import dump
 from os import makedirs, walk
 from os.path import exists, join, splitext
 from typing import Any
@@ -72,7 +72,7 @@ def write_results(src: str, results: Result) -> None:
         makedirs(path)
 
     with open(join(path, filename), "w") as f:
-        dump(results.__dict__, f, indent=4, ensure_ascii=False)
+        json.dump(results.__dict__, f, indent=4, ensure_ascii=False)
 
     print(f"{src} results successfully written to {path}/{filename}")
 
