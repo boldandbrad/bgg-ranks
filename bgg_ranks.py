@@ -1,6 +1,6 @@
-import json
 import sys
 from datetime import date
+from json import dump
 from os import makedirs, walk
 from os.path import exists, join, splitext
 from typing import Any
@@ -9,33 +9,44 @@ import requests
 import xmltodict
 import yaml
 
-api2_base_url = "https://boardgamegeek.com/xmlapi2"
+API2_BASE_URL = "https://boardgamegeek.com/xmlapi2"
 
-in_path = "./in"
-out_path = "./out"
+IN_PATH = "./in"
+OUT_PATH = "./out"
+
+# bgg item types
+BOARDGAME_TYPE = "boardgame"
+EXPANSION_TYPE = "boardgameexpansion"
+
+
+class Result:
+    def __init__(self):
+        self.boardgames = []
+        self.expansions = []
 
 
 def get_sources() -> list[str]:
     # create in_path dir and exit if it does not exist
-    if not exists(in_path):
-        makedirs(in_path)
-        sys.exit(f"Created src directory {in_path}. Add '.yaml' files to it and rerun")
+    if not exists(IN_PATH):
+        makedirs(IN_PATH)
+        sys.exit(f"Created src directory {IN_PATH}. Add '.yaml' files to it and rerun")
 
     # retrieve data source files from in_path
-    sources = next(walk(in_path))[2]
+    sources = next(walk(IN_PATH))[2]
     for src in sources:
         ext = splitext(src)[1]
         if ext != ".yaml" and ext != ".yml":
             print(f"Error: could not process '{src}' because it is not a .yaml file")
             sources.remove(src)
 
+    # quit if no valid source files are found
     if not sources:
         sys.exit("Error: no valid source files exist in the 'in' directory")
     return sources
 
 
 def read_source(src: str) -> "list[int]":
-    with open(join(in_path, src), "r") as f:
+    with open(join(IN_PATH, src), "r") as f:
         data = yaml.load(f, Loader=yaml.FullLoader)
         if data and "bgg-ids" in data:
             ids = data["bgg-ids"]
@@ -51,9 +62,9 @@ def read_source(src: str) -> "list[int]":
             return None
 
 
-def write_results(src: str, results: dict) -> None:
+def write_results(src: str, results: Result) -> None:
     today = date.today()
-    path = f"{out_path}/{src}/{today.strftime('%Y-%m')}"
+    path = f"{OUT_PATH}/{src}/{today.strftime('%Y-%m')}"
     filename = f"{today}.json"
 
     # create out dirs if they do not exist
@@ -61,16 +72,14 @@ def write_results(src: str, results: dict) -> None:
         makedirs(path)
 
     with open(join(path, filename), "w") as f:
-        json.dump(results, f, indent=4, ensure_ascii=False)
+        dump(results.__dict__, f, indent=4, ensure_ascii=False)
 
     print(f"{src} results successfully written to {path}/{filename}")
 
 
 def get_items(ids: "list[int]") -> dict:
     ids_str = ",".join(map(str, ids))
-    url = (
-        f"{api2_base_url}/thing?id={ids_str}&type=boardgame,boardgameexpansion&stats=1"
-    )
+    url = f"{API2_BASE_URL}/thing?id={ids_str}&type={BOARDGAME_TYPE},{EXPANSION_TYPE}&stats=1"
     response = requests.get(url)
     if response.status_code == 200:
         resp_dict = xmltodict.parse(response.content)
@@ -85,12 +94,6 @@ def parse_item_name(name_dict: dict) -> str:
         return name_dict[0]["@value"]
     else:
         return name_dict["@value"]
-
-
-def parse_item_type(item_type: dict) -> str:
-    if item_type == "boardgameexpansion":
-        item_type = "expansion"
-    return item_type
 
 
 def parse_item_rank(ranks_dict: dict) -> Any:
@@ -112,7 +115,7 @@ def parse_item_float_val(key_dict: dict) -> Any:
         return 0.0
 
 
-def parse_item(item_dict: dict, results: dict) -> None:
+def parse_item(item_dict: dict, results: Result) -> None:
     item = {
         "name": parse_item_name(item_dict["name"]),
         "year": item_dict["yearpublished"]["@value"],
@@ -131,12 +134,12 @@ def parse_item(item_dict: dict, results: dict) -> None:
         + item_dict["maxplaytime"]["@value"],
         "id": int(item_dict["@id"]),
     }
-    type = parse_item_type(item_dict["@type"])
+    type = item_dict["@type"]
 
-    if type == "boardgame":
-        results["boardgames"].append(item)
-    elif type == "expansion":
-        results["expansions"].append(item)
+    if type == BOARDGAME_TYPE:
+        results.boardgames.append(item)
+    elif type == EXPANSION_TYPE:
+        results.expansions.append(item)
 
 
 def sortby_rank(x: dict) -> Any:
@@ -163,10 +166,7 @@ if __name__ == "__main__":
         items = resp_dict["items"]["item"]
 
         # parse results for item ranks based on structure
-        results = {
-            "boardgames": [],
-            "expansions": [],
-        }
+        results = Result()
         if isinstance(items, list):
             for item in items:
                 parse_item(item, results)
@@ -175,12 +175,11 @@ if __name__ == "__main__":
             parse_item(item, results)
 
         # sort boardgames by rank and expansions by rating
-        if results["boardgames"]:
-            results["boardgames"].sort(key=sortby_rank)
+        if results.boardgames:
+            results.boardgames.sort(key=sortby_rank)
+        if results.expansions:
+            results.expansions.sort(key=lambda x: x["rating"], reverse=True)
 
-        if results["expansions"]:
-            results["expansions"].sort(key=lambda x: x["rating"], reverse=True)
-
-        # write results dict to json file
+        # write results to json file
         src_name = splitext(src)[0]
         write_results(src_name, results)
