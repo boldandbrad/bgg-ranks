@@ -2,6 +2,10 @@
 
 Simple script that grabs Board Game data from BoardGameGeek.com via the [BGG XML API2](https://boardgamegeek.com/wiki/page/BGG_XML_API2)
 
+## NOTICE
+
+> The contents of this repo have been migrated to and greatly improved upon in [meeple-cli](https://github.com/boldandbrad/meeple-cli). As a result, this repo is deprecated and will no longer receive updates.
+
 ## Dependencies
 
 - python 3.5+
